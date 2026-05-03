@@ -98,56 +98,33 @@ export default function NCRRentMap() {
   return (
     <div className={`relative w-full h-screen bg-white ${isPlacing ? 'cursor-crosshair' : ''}`}>
       
-      {/* 🔔 SUCCESS NOTIFICATION */}
-      <AnimatePresence>
-        {showSuccess && (
-          <motion.div 
-            initial={{ y: -100 }} animate={{ y: 20 }} exit={{ y: -100 }} 
-            className="absolute top-10 left-1/2 -translate-x-1/2 z-[60] bg-white text-black px-8 py-4 rounded-full font-black italic flex items-center gap-3 shadow-2xl border border-zinc-200"
-          >
-            <PartyPopper size={20} className="text-red-600" /> {notificationMsg}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* 📊 DARK SIDEBAR (High Contrast) */}
-      <div className="absolute top-6 left-6 z-20 bg-zinc-900/95 backdrop-blur-xl p-6 rounded-[2rem] border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.3)] w-80">
+      {/* 📊 SIDEBAR */}
+      <div className="absolute top-6 left-6 z-20 bg-zinc-900 p-6 rounded-[2rem] shadow-2xl w-80 border border-white/10">
         <div className="flex justify-between items-center mb-4">
-          <h1 className="text-2xl font-black text-white tracking-tighter flex items-center gap-2 italic">
+          <h1 className="text-2xl font-black text-white tracking-tighter italic flex items-center gap-2">
             <MapIcon className="text-red-500" /> NCR.RENT
           </h1>
-          <button 
-            onClick={handleShare} 
-            className="p-2 bg-white/5 hover:bg-white/10 rounded-full border border-white/5 transition-colors"
-          >
-            <Share2 size={18} className="text-zinc-400" />
-          </button>
+          <button onClick={handleShare} className="p-2 bg-white/10 rounded-full border border-white/10"><Share2 size={18} className="text-zinc-400" /></button>
         </div>
         
         <div className="grid grid-cols-2 gap-4 mb-6 font-black italic border-t border-white/5 pt-4">
-          <div>
-            <p className="text-[10px] text-zinc-500 uppercase tracking-widest">Verified Pins</p>
-            <p className="text-white text-xl">{pins.length}</p>
-          </div>
-          <div>
-            <p className="text-[10px] text-zinc-500 uppercase tracking-widest">Median Rent</p>
-            <p className="text-green-400 text-xl">₹{(medianRent/1000).toFixed(1)}k</p>
-          </div>
+          <div><p className="text-[10px] text-zinc-500 uppercase">Pins</p><p className="text-white text-xl">{pins.length}</p></div>
+          <div><p className="text-[10px] text-zinc-500 uppercase">Avg Rent</p><p className="text-green-400 text-xl">₹{(medianRent/1000).toFixed(1)}k</p></div>
         </div>
 
+        {/* ⚪ WHITE HEATMAP BUTTON */}
         <button 
           onClick={() => setShowHeatmap(!showHeatmap)} 
-          className={`w-full flex items-center justify-between p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${showHeatmap ? 'bg-white text-black' : 'bg-white/5 text-zinc-400 border border-white/5'}`}
+          className={`w-full flex items-center justify-between p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all bg-white text-black shadow-lg hover:scale-[1.02] active:scale-95`}
         >
-          <span className="flex items-center gap-2"><Layers size={14} /> Heatmap Mode</span>
-          <div className={`w-2 h-2 rounded-full ${showHeatmap ? 'bg-red-600 animate-pulse' : 'bg-zinc-700'}`} />
+          <span className="flex items-center gap-2"><Layers size={14} /> {showHeatmap ? 'Disable Heatmap' : 'Enable Heatmap'}</span>
+          <div className={`w-2.5 h-2.5 rounded-full ${showHeatmap ? 'bg-red-600 animate-pulse' : 'bg-zinc-300'}`} />
         </button>
       </div>
 
       <GoogleMap 
         mapContainerStyle={{ width: '100vw', height: '100vh' }} 
-        center={center} 
-        zoom={11} 
+        center={center} zoom={11} 
         options={{ disableDefaultUI: true, styles: [] }}
         onClick={(e) => isPlacing && (setTempCoords({ lat: e.latLng!.lat(), lng: e.latLng!.lng() }), setShowForm(true))}
       >
@@ -155,29 +132,18 @@ export default function NCRRentMap() {
           <HeatmapLayer data={heatmapData} options={{ radius: 30, opacity: 0.6 }} />
         ) : (
           pins.map(pin => (
-            <Marker 
-              key={pin.id} 
-              position={{ lat: pin.lat, lng: pin.lng }} 
-              label={{ 
-                text: `₹${(pin.rent_amount / 1000).toFixed(0)}k`, 
-                color: 'white', 
-                fontSize: '11px', 
-                fontWeight: '900',
-                className: 'marker-label'
-              }} 
-            />
+            <Marker key={pin.id} position={{ lat: pin.lat, lng: pin.lng }} label={{ text: `₹${(pin.rent_amount / 1000).toFixed(0)}k`, color: 'white', fontSize: '11px', fontWeight: '900', className: 'marker-label' }} />
           ))
         )}
       </GoogleMap>
 
-      {/* 🏁 DARK TICKER (High Contrast) */}
+      {/* 🏁 WHITE TICKER TEXT */}
       <div className="absolute bottom-0 left-0 right-0 z-10 bg-zinc-950 border-t border-white/5 py-3 overflow-hidden">
-        <div className="marquee-content whitespace-nowrap text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500">
+        <div className="marquee-content whitespace-nowrap text-[11px] font-black uppercase tracking-[0.3em] text-white">
           ● REAL-TIME DATA: GURGAON SEC 54 (₹62K) ● MARKET UPDATE: RENT HIKE IN NOIDA SEC 150 ● DATA QUALITY: CROWDSOURCED VERIFIED ● TRUTH PROTOCOL V.1.0 ●
         </div>
       </div>
 
-      {/* ... (Form and FAB remain consistent for accessibility) ... */}
       <AnimatePresence>
         {showForm && (
           <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
@@ -195,15 +161,12 @@ export default function NCRRentMap() {
         )}
       </AnimatePresence>
 
-      <button 
-        onClick={() => setIsPlacing(true)} 
-        className={`absolute bottom-12 right-10 z-20 px-10 py-6 rounded-full shadow-2xl transition-all font-black text-white uppercase italic tracking-widest ${isPlacing ? 'bg-zinc-400' : 'bg-red-600 hover:bg-red-500 hover:scale-105'}`}
-      >
+      <button onClick={() => setIsPlacing(true)} className={`absolute bottom-12 right-10 z-20 px-10 py-6 rounded-full shadow-2xl transition-all font-black text-white uppercase italic tracking-widest ${isPlacing ? 'bg-zinc-400' : 'bg-red-600 hover:bg-red-500'}`}>
         {isPlacing ? 'CANCEL' : <><Plus size={24} /> PIN MY RENT</>}
       </button>
 
       <style jsx>{`
-        .marquee-content { display: inline-block; animation: marquee 40s linear infinite; }
+        .marquee-content { display: inline-block; animation: marquee 35s linear infinite; }
         @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
         :global(.marker-label) {
           margin-top: -35px; background: rgba(0,0,0,0.85); padding: 5px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);
