@@ -3,10 +3,17 @@ import React, { useState, useEffect } from 'react';
 import { GoogleMap, useJsApiLoader, Marker, HeatmapLayer, Circle } from '@react-google-maps/api';
 import { createClient } from '@supabase/supabase-js';
 import { motion, AnimatePresence } from 'framer-motion';
-// Added Share2 icon
-import { Plus, Map as MapIcon, X, ShieldCheck, Building2, Wallet, Train, Activity, CheckCircle2, Navigation, PartyPopper, Share2, Copy } from 'lucide-react';
+import { 
+  Plus, Map as MapIcon, X, Share2, Copy, 
+  Navigation, PartyPopper, Info, Layers, 
+  Building2, Wallet 
+} from 'lucide-react';
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+// Initialize Supabase
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!, 
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 const calculateMedian = (pins: any[]) => {
   if (pins.length === 0) return 0;
@@ -15,6 +22,7 @@ const calculateMedian = (pins: any[]) => {
   return prices.length % 2 !== 0 ? prices[mid] : (prices[mid - 1] + prices[mid]) / 2;
 };
 
+// Center of Delhi NCR
 const center = { lat: 28.6139, lng: 77.2090 };
 
 export default function NCRRentMap() {
@@ -32,7 +40,7 @@ export default function NCRRentMap() {
   const [isPlacing, setIsPlacing] = useState(false); 
   const [showForm, setShowForm] = useState(false);   
   const [showSuccess, setShowSuccess] = useState(false);
-  const [notificationMsg, setNotificationMsg] = useState("TRUTH PINNED SUCCESSFULLY!"); // Dynamic message
+  const [notificationMsg, setNotificationMsg] = useState("");
   const [tempCoords, setTempCoords] = useState<{lat: number, lng: number} | null>(null);
   
   const [formData, setFormData] = useState({
@@ -45,16 +53,17 @@ export default function NCRRentMap() {
   });
 
   useEffect(() => { fetchPins(); }, []);
+
   async function fetchPins() {
     const { data } = await supabase.from('rent_pins').select('*');
     if (data) setPins(data);
   }
 
-  // --- NEW: SHARE LOGIC ---
+  // Native Share / Clipboard Fallback
   const handleShare = async () => {
     const shareData = {
-      title: 'NCR.RENT - The Truth in Housing',
-      text: 'Check out this crowdsourced rent map for Delhi NCR!',
+      title: 'NCR.RENT - Crowdsourced Truth in Housing',
+      text: 'Check out the live rent map for Delhi NCR!',
       url: window.location.href,
     };
 
@@ -65,16 +74,15 @@ export default function NCRRentMap() {
         console.log("Share cancelled");
       }
     } else {
-      // Fallback for Desktop: Copy to Clipboard
       navigator.clipboard.writeText(window.location.href);
-      setNotificationMsg("URL COPIED TO CLIPBOARD!");
+      setNotificationMsg("LINK COPIED TO CLIPBOARD!");
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
     }
   };
 
   const handleSavePin = async () => {
-    if (!tempCoords || !formData.rent_amount) return alert("Enter rent amount!");
+    if (!tempCoords || !formData.rent_amount) return alert("Please enter the rent amount.");
 
     const { error } = await supabase.from('rent_pins').insert([{
         rent_amount: parseInt(formData.rent_amount),
@@ -99,63 +107,88 @@ export default function NCRRentMap() {
     }
   };
 
-  if (!isLoaded) return <div className="h-screen w-full flex items-center justify-center bg-black text-white font-black italic text-4xl uppercase">NCR.RENT</div>;
+  if (!isLoaded) return (
+    <div className="h-screen w-full flex items-center justify-center bg-white text-black font-black italic text-4xl uppercase tracking-tighter">
+      NCR.RENT
+    </div>
+  );
 
   return (
-    <div className={`relative w-full h-screen bg-zinc-950 overflow-hidden ${isPlacing ? 'cursor-crosshair' : ''}`}>
+    <div className={`relative w-full h-screen bg-zinc-50 overflow-hidden ${isPlacing ? 'cursor-crosshair' : ''}`}>
       
-      {/* 🏆 GLOBAL SUCCESS/SHARE NOTIFICATION */}
+      {/* 🔔 GLOBAL NOTIFICATIONS */}
       <AnimatePresence>
         {showSuccess && (
           <motion.div 
             initial={{ y: -100, opacity: 0 }}
             animate={{ y: 20, opacity: 1 }}
             exit={{ y: -100, opacity: 0 }}
-            className="absolute top-10 left-1/2 -translate-x-1/2 z-[60] bg-white text-black px-8 py-4 rounded-full shadow-[0_0_30px_rgba(255,255,255,0.2)] font-black italic flex items-center gap-3 border border-zinc-200"
+            className="absolute top-10 left-1/2 -translate-x-1/2 z-[60] bg-zinc-900 text-white px-8 py-4 rounded-full shadow-2xl font-black italic flex items-center gap-3 border border-white/10"
           >
-            {notificationMsg.includes("PINNED") ? <PartyPopper /> : <Copy />} {notificationMsg}
+            {notificationMsg.includes("LINK") ? <Copy size={20} /> : <PartyPopper size={20} />} 
+            {notificationMsg}
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* AREA INSIGHTS (SIDEBAR) */}
-      <div className="absolute top-6 left-6 z-20 bg-zinc-900/60 backdrop-blur-xl p-6 rounded-[2rem] border border-white/10 shadow-2xl w-80">
-        <div className="flex justify-between items-start">
-          <h1 className="text-2xl font-black text-white tracking-tighter flex items-center gap-2 italic">
-            <MapIcon className="text-red-500" /> NCR.RENT
+      {/* 📊 ANALYTICS SIDEBAR */}
+      <div className="absolute top-6 left-6 z-20 bg-white/90 backdrop-blur-xl p-6 rounded-[2rem] border border-zinc-200 shadow-xl w-80">
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-2xl font-black text-black tracking-tighter flex items-center gap-2 italic">
+            <MapIcon className="text-red-600" /> NCR.RENT
           </h1>
-          {/* THE NEW SHARE BUTTON */}
           <button 
             onClick={handleShare}
-            className="p-2 bg-white/5 hover:bg-white/10 rounded-full transition-colors border border-white/5"
-            title="Share Project"
+            className="p-2 bg-zinc-100 hover:bg-zinc-200 rounded-full transition-colors border border-zinc-200"
           >
-            <Share2 size={18} className="text-zinc-400" />
+            <Share2 size={18} className="text-zinc-600" />
           </button>
         </div>
         
-        <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-white/5 font-black italic">
-          <div><p className="text-[9px] text-zinc-500 uppercase">Verified Pins</p><p className="text-white text-lg">{pins.length}</p></div>
-          <div><p className="text-[9px] text-zinc-500 uppercase">Median Rent</p><p className="text-green-400 text-lg">₹{(calculateMedian(pins)/1000).toFixed(1)}k</p></div>
+        <div className="grid grid-cols-2 gap-4 pt-4 border-t border-zinc-100 font-black italic">
+          <div>
+            <p className="text-[10px] text-zinc-500 uppercase tracking-widest">Live Pins</p>
+            <p className="text-black text-xl">{pins.length}</p>
+          </div>
+          <div>
+            <p className="text-[10px] text-zinc-500 uppercase tracking-widest">Avg Rent</p>
+            <p className="text-green-600 text-xl">₹{(calculateMedian(pins)/1000).toFixed(1)}k</p>
+          </div>
+        </div>
+
+        {/* DATA TOGGLES */}
+        <div className="mt-6 space-y-2">
+           <button 
+             onClick={() => setShowHeatmap(!showHeatmap)}
+             className={`w-full flex items-center justify-between p-3 rounded-xl text-xs font-bold transition-all ${showHeatmap ? 'bg-orange-100 text-orange-700 border-orange-200' : 'bg-zinc-50 text-zinc-600 border border-zinc-100'}`}
+           >
+             <span className="flex items-center gap-2"><Layers size={14} /> HEATMAP OVERLAY</span>
+             <div className={`w-2 h-2 rounded-full ${showHeatmap ? 'bg-orange-500 animate-pulse' : 'bg-zinc-300'}`} />
+           </button>
         </div>
       </div>
 
-      {/* PLACEMENT INSTRUCTION */}
+      {/* 📍 PLACEMENT HEADER */}
       <AnimatePresence>
         {isPlacing && !showForm && (
           <motion.div 
             initial={{ y: -100 }} animate={{ y: 0 }} exit={{ y: -100 }}
-            className="absolute top-10 left-1/2 -translate-x-1/2 z-30 bg-blue-600 text-white px-8 py-4 rounded-full shadow-2xl font-black italic flex items-center gap-3 border-2 border-white/20"
+            className="absolute top-6 left-1/2 -translate-x-1/2 z-30 bg-blue-600 text-white px-8 py-4 rounded-full shadow-2xl font-black italic flex items-center gap-3 border-2 border-white/20"
           >
-            <Navigation className="animate-bounce" /> CLICK ON THE MAP TO SET LOCATION
+            <Navigation className="animate-bounce" size={20} /> CLICK MAP TO DROP PIN
           </motion.div>
         )}
       </AnimatePresence>
 
       <GoogleMap 
         mapContainerStyle={{ width: '100vw', height: '100vh' }} 
-        center={center} zoom={11} 
-        options={{ styles: darkMapStyle, disableDefaultUI: true }}
+        center={center} 
+        zoom={11} 
+        options={{ 
+          disableDefaultUI: true,
+          zoomControl: false,
+          styles: [] // Empty array ensures Default Light Theme
+        }}
         onClick={(e) => {
           if (isPlacing) {
             setTempCoords({ lat: e.latLng!.lat(), lng: e.latLng!.lng() });
@@ -163,67 +196,133 @@ export default function NCRRentMap() {
           }
         }}
       >
-        {showMetroRadius && (
-          <Circle center={{lat: 28.4595, lng: 77.0734}} radius={1200} options={{fillColor: '#3b82f6', fillOpacity: 0.1, strokeColor: '#3b82f6', strokeWeight: 1}} />
-        )}
         {showHeatmap ? (
-          <HeatmapLayer data={pins.map(p => ({ location: new google.maps.LatLng(p.lat, p.lng), weight: 1 }))} />
+          <HeatmapLayer 
+            data={pins.map(p => ({ location: new google.maps.LatLng(p.lat, p.lng), weight: 1 }))} 
+            options={{ radius: 30, opacity: 0.6 }}
+          />
         ) : (
           pins.map(pin => (
-            <Marker key={pin.id} position={{ lat: pin.lat, lng: pin.lng }} onClick={() => setSelectedPin(pin)}
-              label={{ text: `₹${pin.rent_amount / 1000}k`, color: 'white', fontSize: '10px', fontWeight: '900' }}
+            <Marker 
+              key={pin.id} 
+              position={{ lat: pin.lat, lng: pin.lng }} 
+              onClick={() => setSelectedPin(pin)}
+              label={{ 
+                text: `₹${(pin.rent_amount / 1000).toFixed(0)}k`, 
+                color: 'white', 
+                fontSize: '11px', 
+                fontWeight: '900',
+                className: 'marker-label'
+              }}
             />
           ))
         )}
         {tempCoords && <Marker position={tempCoords} icon={{ url: "http://maps.google.com/mapfiles/ms/icons/blue-dot.png" }} />}
       </GoogleMap>
 
-      {/* THE FORM */}
+      {/* 📝 DATA ENTRY FORM */}
       <AnimatePresence>
         {showForm && (
-          <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-zinc-900 border border-white/10 p-8 rounded-[2.5rem] w-full max-w-lg shadow-3xl">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-3xl font-black text-white italic tracking-tighter">THE TRUTH FORM</h2>
-                <button onClick={() => {setShowForm(false); setIsPlacing(false);}}><X className="text-zinc-500" /></button>
+          <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/40 backdrop-blur-md p-4">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }} 
+              animate={{ scale: 1, opacity: 1 }} 
+              className="bg-white border border-zinc-200 p-8 rounded-[2.5rem] w-full max-w-lg shadow-3xl"
+            >
+              <div className="flex justify-between items-center mb-8">
+                <h2 className="text-3xl font-black text-black italic tracking-tighter flex items-center gap-2">
+                  <ShieldCheck className="text-blue-600" /> THE TRUTH FORM
+                </h2>
+                <button 
+                  onClick={() => {setShowForm(false); setIsPlacing(false); setTempCoords(null);}}
+                  className="p-2 hover:bg-zinc-100 rounded-full transition-colors"
+                >
+                  <X size={24} className="text-zinc-400" />
+                </button>
               </div>
-              <div className="space-y-4">
-                <input type="number" placeholder="Monthly Rent (₹)" className="w-full bg-white/5 border border-white/10 p-4 rounded-xl text-white outline-none focus:border-red-500" onChange={(e) => setFormData({...formData, rent_amount: e.target.value})} />
-                <div className="grid grid-cols-2 gap-4">
-                  <select className="bg-zinc-800 border border-white/10 p-4 rounded-xl text-white outline-none" onChange={(e) => setFormData({...formData, bhk_type: e.target.value})}>
-                    <option value="1BHK">1 BHK</option><option value="2BHK">2 BHK</option><option value="3BHK">3 BHK</option>
-                  </select>
-                  <input type="number" placeholder="Maint. (₹)" className="bg-white/5 border border-white/10 p-4 rounded-xl text-white outline-none" onChange={(e) => setFormData({...formData, maintenance_fee: e.target.value})} />
+              
+              <div className="space-y-5">
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-zinc-400">₹</span>
+                  <input 
+                    type="number" 
+                    placeholder="Monthly Rent" 
+                    className="w-full bg-zinc-50 border border-zinc-200 p-5 pl-10 rounded-2xl text-black font-bold outline-none focus:ring-2 focus:ring-blue-500/20" 
+                    onChange={(e) => setFormData({...formData, rent_amount: e.target.value})} 
+                  />
                 </div>
-                <textarea placeholder="Comments..." className="w-full bg-white/5 border border-white/10 p-4 rounded-xl text-white outline-none h-24 resize-none" onChange={(e) => setFormData({...formData, comment: e.target.value})} />
-                <button onClick={handleSavePin} className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-5 rounded-2xl shadow-xl transition-all">SUBMIT TRUTH PIN</button>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-zinc-50 border border-zinc-200 p-2 rounded-2xl">
+                    <p className="text-[9px] font-black text-zinc-400 ml-3 uppercase">Config</p>
+                    <select 
+                      className="w-full bg-transparent p-2 text-black font-bold outline-none" 
+                      onChange={(e) => setFormData({...formData, bhk_type: e.target.value})}
+                    >
+                      <option value="1BHK">1 BHK</option>
+                      <option value="2BHK">2 BHK</option>
+                      <option value="3BHK">3 BHK</option>
+                    </select>
+                  </div>
+                  <div className="bg-zinc-50 border border-zinc-200 p-2 rounded-2xl">
+                    <p className="text-[9px] font-black text-zinc-400 ml-3 uppercase">Maint. (₹)</p>
+                    <input 
+                      type="number" 
+                      className="w-full bg-transparent p-2 text-black font-bold outline-none" 
+                      onChange={(e) => setFormData({...formData, maintenance_fee: e.target.value})} 
+                    />
+                  </div>
+                </div>
+
+                <textarea 
+                  placeholder="Tell us the truth about the landlord, water, or electricity..." 
+                  className="w-full bg-zinc-50 border border-zinc-200 p-5 rounded-2xl text-black font-medium outline-none h-32 resize-none" 
+                  onChange={(e) => setFormData({...formData, comment: e.target.value})} 
+                />
+
+                <button 
+                  onClick={handleSavePin} 
+                  className="w-full bg-black hover:bg-zinc-800 text-white font-black py-6 rounded-2xl shadow-xl transition-all uppercase italic tracking-widest text-lg"
+                >
+                  VERIFY & SUBMIT
+                </button>
               </div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
 
-      {/* FLOAT ACTION BUTTON */}
+      {/* ⚡ FLOAT ACTION BUTTON */}
       <button 
         onClick={() => { setIsPlacing(true); setTempCoords(null); }}
-        className={`absolute bottom-12 right-10 z-20 px-10 py-5 rounded-full shadow-2xl flex items-center gap-3 transition-all font-black text-white uppercase italic text-sm ${isPlacing ? 'bg-zinc-500' : 'bg-red-600 hover:bg-red-500'}`}
+        className={`absolute bottom-12 right-10 z-20 px-10 py-6 rounded-full shadow-2xl flex items-center gap-3 transition-all font-black text-white uppercase italic tracking-widest ${isPlacing ? 'bg-zinc-400 scale-95' : 'bg-red-600 hover:bg-red-500 hover:scale-105'}`}
       >
-        {isPlacing ? 'CANCEL PLACEMENT' : <><Plus /> PIN MY RENT</>}
+        {isPlacing ? 'CANCEL' : <><Plus size={24} /> PIN MY RENT</>}
       </button>
 
-      {/* TICKER */}
-      <div className="absolute bottom-0 left-0 right-0 z-10 bg-black/80 backdrop-blur-md border-t border-white/5 py-2 overflow-hidden whitespace-nowrap">
-        <div className="animate-marquee inline-block text-xs font-bold uppercase tracking-widest text-zinc-400">
-          ● LIVE DATA FEED: NEW PIN IN GURGAON SECTOR 43 (₹55K) | MARKET ALERT: HIGH VOLATILITY IN SOUTH DELHI | PEER VERIFIED: NOIDA SEC 150 (₹42K) ●
+      {/* 📊 FOOTER TICKER */}
+      <div className="absolute bottom-0 left-0 right-0 z-10 bg-white/90 backdrop-blur-md border-t border-zinc-200 py-3 overflow-hidden">
+        <div className="animate-marquee whitespace-nowrap text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
+          ● VERIFIED: GURGAON SEC 54 - 2BHK (₹62K) ● ALERT: RENT HIKE OBSERVED IN NOIDA SEC 150 ● DATA QUALITY: 100% CROWDSOURCED ● TRUTH PROTOCOL ACTIVE ● 
         </div>
       </div>
+
+      <style jsx global>{`
+        @keyframes marquee {
+          0% { transform: translateX(100%); }
+          100% { transform: translateX(-100%); }
+        }
+        .animate-marquee {
+          animation: marquee 30s linear infinite;
+        }
+        .marker-label {
+          margin-top: -35px;
+          background: rgba(0,0,0,0.8);
+          padding: 4px 8px;
+          border-radius: 6px;
+          border: 1px solid rgba(255,255,255,0.2);
+        }
+      `}</style>
     </div>
   );
 }
-
-const darkMapStyle = [
-  { "elementType": "geometry", "stylers": [{ "color": "#09090b" }] },
-  { "elementType": "labels.text.fill", "stylers": [{ "color": "#71717a" }] },
-  { "featureType": "road", "elementType": "geometry", "stylers": [{ "color": "#18181b" }] },
-  { "featureType": "water", "elementType": "geometry", "stylers": [{ "color": "#000000" }] }
-];
