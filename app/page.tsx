@@ -3,7 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { GoogleMap, useJsApiLoader, Marker, HeatmapLayer, Circle } from '@react-google-maps/api';
 import { createClient } from '@supabase/supabase-js';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Map as MapIcon, X, ShieldCheck, Building2, Wallet, Train, Activity, CheckCircle2, Navigation, PartyPopper } from 'lucide-react';
+// Added Share2 icon
+import { Plus, Map as MapIcon, X, ShieldCheck, Building2, Wallet, Train, Activity, CheckCircle2, Navigation, PartyPopper, Share2, Copy } from 'lucide-react';
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
 
@@ -30,7 +31,8 @@ export default function NCRRentMap() {
   
   const [isPlacing, setIsPlacing] = useState(false); 
   const [showForm, setShowForm] = useState(false);   
-  const [showSuccess, setShowSuccess] = useState(false); // SUCCESS NOTIFICATION STATE
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [notificationMsg, setNotificationMsg] = useState("TRUTH PINNED SUCCESSFULLY!"); // Dynamic message
   const [tempCoords, setTempCoords] = useState<{lat: number, lng: number} | null>(null);
   
   const [formData, setFormData] = useState({
@@ -47,6 +49,29 @@ export default function NCRRentMap() {
     const { data } = await supabase.from('rent_pins').select('*');
     if (data) setPins(data);
   }
+
+  // --- NEW: SHARE LOGIC ---
+  const handleShare = async () => {
+    const shareData = {
+      title: 'NCR.RENT - The Truth in Housing',
+      text: 'Check out this crowdsourced rent map for Delhi NCR!',
+      url: window.location.href,
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch (err) {
+        console.log("Share cancelled");
+      }
+    } else {
+      // Fallback for Desktop: Copy to Clipboard
+      navigator.clipboard.writeText(window.location.href);
+      setNotificationMsg("URL COPIED TO CLIPBOARD!");
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+    }
+  };
 
   const handleSavePin = async () => {
     if (!tempCoords || !formData.rent_amount) return alert("Enter rent amount!");
@@ -67,39 +92,51 @@ export default function NCRRentMap() {
       setShowForm(false);
       setIsPlacing(false);
       setTempCoords(null);
-      setShowSuccess(true); // TRIGGER SUCCESS MESSAGE
-      setTimeout(() => setShowSuccess(false), 3000); // HIDE AFTER 3 SECONDS
+      setNotificationMsg("TRUTH PINNED SUCCESSFULLY!");
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
       fetchPins();
     }
   };
 
-  if (!isLoaded) return <div className="h-screen w-full flex items-center justify-center bg-black text-white font-black italic text-4xl">NCR.RENT</div>;
+  if (!isLoaded) return <div className="h-screen w-full flex items-center justify-center bg-black text-white font-black italic text-4xl uppercase">NCR.RENT</div>;
 
   return (
     <div className={`relative w-full h-screen bg-zinc-950 overflow-hidden ${isPlacing ? 'cursor-crosshair' : ''}`}>
       
-      {/* 🏆 SUCCESS NOTIFICATION (The New Part) */}
+      {/* 🏆 GLOBAL SUCCESS/SHARE NOTIFICATION */}
       <AnimatePresence>
         {showSuccess && (
           <motion.div 
             initial={{ y: -100, opacity: 0 }}
             animate={{ y: 20, opacity: 1 }}
             exit={{ y: -100, opacity: 0 }}
-            className="absolute top-10 left-1/2 -translate-x-1/2 z-[60] bg-green-500 text-white px-8 py-4 rounded-full shadow-[0_0_30px_rgba(34,197,94,0.4)] font-black italic flex items-center gap-3 border border-white/20"
+            className="absolute top-10 left-1/2 -translate-x-1/2 z-[60] bg-white text-black px-8 py-4 rounded-full shadow-[0_0_30px_rgba(255,255,255,0.2)] font-black italic flex items-center gap-3 border border-zinc-200"
           >
-            <PartyPopper className="text-white" /> TRUTH PINNED SUCCESSFULLY!
+            {notificationMsg.includes("PINNED") ? <PartyPopper /> : <Copy />} {notificationMsg}
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* AREA INSIGHTS (SIDEBAR) */}
       <div className="absolute top-6 left-6 z-20 bg-zinc-900/60 backdrop-blur-xl p-6 rounded-[2rem] border border-white/10 shadow-2xl w-80">
-        <h1 className="text-2xl font-black text-white tracking-tighter flex items-center gap-2 italic">
-          <MapIcon className="text-red-500" /> NCR.RENT
-        </h1>
+        <div className="flex justify-between items-start">
+          <h1 className="text-2xl font-black text-white tracking-tighter flex items-center gap-2 italic">
+            <MapIcon className="text-red-500" /> NCR.RENT
+          </h1>
+          {/* THE NEW SHARE BUTTON */}
+          <button 
+            onClick={handleShare}
+            className="p-2 bg-white/5 hover:bg-white/10 rounded-full transition-colors border border-white/5"
+            title="Share Project"
+          >
+            <Share2 size={18} className="text-zinc-400" />
+          </button>
+        </div>
+        
         <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-white/5 font-black italic">
-          <div><p className="text-[9px] text-zinc-500 uppercase">Pins</p><p className="text-white text-lg">{pins.length}</p></div>
-          <div><p className="text-[9px] text-zinc-500 uppercase">Median</p><p className="text-green-400 text-lg">₹{(calculateMedian(pins)/1000).toFixed(1)}k</p></div>
+          <div><p className="text-[9px] text-zinc-500 uppercase">Verified Pins</p><p className="text-white text-lg">{pins.length}</p></div>
+          <div><p className="text-[9px] text-zinc-500 uppercase">Median Rent</p><p className="text-green-400 text-lg">₹{(calculateMedian(pins)/1000).toFixed(1)}k</p></div>
         </div>
       </div>
 
